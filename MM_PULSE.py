@@ -1,4 +1,4 @@
-from stylegan import G_synthesis, G_mapping
+from stylegan2 import G_synthesis, G_mapping
 from dataclasses import dataclass
 from SphericalOptimizer import SphericalOptimizer
 from pathlib import Path
@@ -10,9 +10,9 @@ from functools import partial
 from drive import open_url
 
 
-class PULSE(torch.nn.Module):
+class MM_PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
-        super(PULSE, self).__init__()
+        super(MM_PULSE, self).__init__()
 
         self.synthesis = G_synthesis().cuda()
         self.verbose = verbose
