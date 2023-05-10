@@ -1,4 +1,4 @@
-from MM_PULSE import PULSE
+from MM_PULSE import MM_PULSE
 from torch.utils.data import Dataset, DataLoader
 from torch.nn import DataParallel
 from pathlib import Path

@@ -1,10 +1,11 @@
-from stylegan2 import GeneratorBlock, MappingNetwork
+from stylegan2 import Generator, MappingNetwork
 from dataclasses import dataclass
 from SphericalOptimizer import SphericalOptimizer
 from pathlib import Path
 import numpy as np
 import time
 import torch
+import math
 from loss import LossBuilder
 from functools import partial
 from drive import open_url
@@ -13,8 +14,8 @@ from drive import open_url
 class MM_PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
         super(MM_PULSE, self).__init__()
-
-        self.synthesis = GeneratorBlock().cuda()
+        log_resolution = int(math.log2(32))
+        self.synthesis = Generator(log_resolution, 512).cuda()
         self.verbose = verbose
 
         cache_dir = Path(cache_dir)
@@ -32,7 +33,7 @@ class MM_PULSE(torch.nn.Module):
         else:
             if self.verbose:
                 print("\tLoading Mapping Network")
-            mapping = MappingNetwork().cuda()
+            mapping = MappingNetwork(512, 8).cuda()
             if self.verbose:
                 print("\tRunning Mapping Network")
             with torch.no_grad():
