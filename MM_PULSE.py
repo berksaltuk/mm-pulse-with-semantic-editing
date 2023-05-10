@@ -1,4 +1,4 @@
-from stylegan2 import G_synthesis, G_mapping
+from stylegan2 import GeneratorBlock, MappingNetwork
 from dataclasses import dataclass
 from SphericalOptimizer import SphericalOptimizer
 from pathlib import Path
@@ -14,7 +14,7 @@ class MM_PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
         super(MM_PULSE, self).__init__()
 
-        self.synthesis = G_synthesis().cuda()
+        self.synthesis = GeneratorBlock().cuda()
         self.verbose = verbose
 
         cache_dir = Path(cache_dir)
@@ -32,7 +32,7 @@ class MM_PULSE(torch.nn.Module):
         else:
             if self.verbose:
                 print("\tLoading Mapping Network")
-            mapping = G_mapping().cuda()
+            mapping = MappingNetwork().cuda()
             if self.verbose:
                 print("\tRunning Mapping Network")
             with torch.no_grad():
