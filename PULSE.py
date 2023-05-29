@@ -1,51 +1,37 @@
-from stylegan2 import Generator, MappingNetwork
+from stylegan import G_synthesis, G_mapping
 from dataclasses import dataclass
 from SphericalOptimizer import SphericalOptimizer
 from pathlib import Path
 import numpy as np
 import time
 import torch
-import math
 from loss import LossBuilder
 from functools import partial
 from drive import open_url
+import dnnlib
+import torch_utils
+import pickle
 
 
-class MM_PULSE(torch.nn.Module):
+class PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
-        super(MM_PULSE, self).__init__()
-        log_resolution = int(math.log2(32))
-        self.synthesis = Generator(log_resolution, 512).cuda()
+        super(PULSE, self).__init__()
+
+        self.G = None
+        with open('stylegan2-ffhq-1024x1024.pkl', 'rb') as f:
+            self.G = pickle.load(f)['G_ema'].cuda()  # torch.nn.Module
+
         self.verbose = verbose
 
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        if self.verbose:
-            print("Loading Synthesis Network")
-
-        for param in self.synthesis.parameters():
-            param.requires_grad = False
 
         self.lrelu = torch.nn.LeakyReLU(negative_slope=0.2)
 
-        if Path("gaussian_fit.pt").exists():
-            self.gaussian_fit = torch.load("gaussian_fit.pt")
-        else:
-            if self.verbose:
-                print("\tLoading Mapping Network")
-            mapping = MappingNetwork(512, 8).cuda()
-            if self.verbose:
-                print("\tRunning Mapping Network")
-            with torch.no_grad():
-                torch.manual_seed(0)
-                latent = torch.randn(
-                    (1000000, 512), dtype=torch.float32, device="cuda")
-                latent_out = torch.nn.LeakyReLU(5)(mapping(latent))
-                self.gaussian_fit = {"mean": latent_out.mean(
-                    0), "std": latent_out.std(0)}
-                torch.save(self.gaussian_fit, "gaussian_fit.pt")
-                if self.verbose:
-                    print("\tSaved \"gaussian_fit.pt\"")
+        if self.verbose:
+            print("\tLoading Mapping Network")
+        self.mapping = self.G.mapping(z, c,
+                                      truncation_psi=0.5, truncation_cutoff=8).cuda()
 
     def forward(self, ref_im,
                 seed,
@@ -132,6 +118,13 @@ class MM_PULSE(torch.nn.Module):
 
         if self.verbose:
             print("Optimizing")
+
+        mapping_mean = torch.mean(self.mapping)
+        mapping_std = torch.std(self.mapping)
+        print("Mean of G.mapping:",
+              mapping_mean.item())
+        print("Std deviation of G.mapping:",
+              mapping_std.item())
         for j in range(steps):
             opt.opt.zero_grad()
 
@@ -143,10 +136,11 @@ class MM_PULSE(torch.nn.Module):
 
             # Apply learned linear mapping to match latent distribution to that of the mapping network
             latent_in = self.lrelu(
-                latent_in*self.gaussian_fit["std"] + self.gaussian_fit["mean"])
+                latent_in*mapping_std + mapping_mean)
 
             # Normalize image to [0,1] instead of [-1,1]
-            gen_im = (self.synthesis(latent_in, noise)+1)/2
+            gen_im = (self.G.synthesis(
+                latent_in, noise_mode='random', force_fp32=True)+1)/2
 
             # Calculate Losses
             loss, loss_dict = loss_builder(latent_in, gen_im)
@@ -176,7 +170,5 @@ class MM_PULSE(torch.nn.Module):
         current_info = f' | time: {total_t:.1f} | it/s: {(j+1)/total_t:.2f} | batchsize: {batch_size}'
         if self.verbose:
             print(best_summary+current_info)
-        if (min_l2 <= eps):
-            yield (gen_im.clone().cpu().detach().clamp(0, 1), loss_builder.D(best_im).cpu().detach().clamp(0, 1))
-        else:
-            print("Could not find a face that downscales correctly within epsilon")
+
+        yield (gen_im.clone().cpu().detach().clamp(0, 1), loss_builder.D(best_im).cpu().detach().clamp(0, 1))

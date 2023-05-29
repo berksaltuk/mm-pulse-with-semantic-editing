@@ -1,4 +1,4 @@
-from MM_PULSE import MM_PULSE
+from PULSE import PULSE
 from torch.utils.data import Dataset, DataLoader
 from torch.nn import DataParallel
 from pathlib import Path
@@ -74,7 +74,7 @@ out_path.mkdir(parents=True, exist_ok=True)
 
 dataloader = DataLoader(dataset, batch_size=kwargs["batch_size"])
 
-model = MM_PULSE(cache_dir=kwargs["cache_dir"])
+model = PULSE(cache_dir=kwargs["cache_dir"])
 model = DataParallel(model)
 
 toPIL = torchvision.transforms.ToPILImage()
