@@ -61,6 +61,8 @@ parser.add_argument('-learning_rate', type=float, default=0.4,
                     help='Learning rate to use during optimization')
 parser.add_argument('-steps', type=int, default=100,
                     help='Number of optimization steps')
+parser.add_argument('-latent_num', type=int, default=1,
+                    help='Number of optimization steps')
 parser.add_argument('-lr_schedule', type=str, default='linear1cycledrop',
                     help='fixed, linear1cycledrop, linear1cycle')
 parser.add_argument('-save_intermediate', action='store_true',
@@ -94,8 +96,9 @@ for ref_im, ref_im_name in dataloader:
                 toPIL(LR[i].cpu().detach().clamp(0, 1)).save(
                     int_path_LR / f"{ref_im_name[i]}_{j:0{padding}}.png")
     else:
-        # out_im = model(ref_im,**kwargs)
-        for j, (HR, LR) in enumerate(model(ref_im, **kwargs)):
-            for i in range(kwargs["batch_size"]):
-                toPIL(HR[i].cpu().detach().clamp(0, 1)).save(
-                    out_path / f"{ref_im_name[i]}.png")
+      for j, images in enumerate(model(ref_im, **kwargs)):
+          print(f"Number of images: {len(images)}")
+          for i, image in enumerate(images):
+              image_name = f"{ref_im_name[0]}_{j}_{i}"
+              toPIL(image[0].cpu().detach().clamp(0, 1)).save(
+                  out_path / f"{image_name}.png")

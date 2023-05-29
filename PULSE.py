@@ -12,7 +12,7 @@ import dnnlib
 import torch_utils
 import pickle
 import gc
-
+import random
 
 class PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
@@ -57,94 +57,108 @@ class PULSE(torch.nn.Module):
                 steps,
                 lr_schedule,
                 save_intermediate,
+                latent_num,
                 **kwargs):
 
-        if seed:
-            torch.manual_seed(seed)
-            torch.cuda.manual_seed(seed)
-            torch.backends.cudnn.deterministic = True
-
         batch_size = ref_im.shape[0]
+        images = []
 
-        # Generate latent tensor
-        if (tile_latent):
-            latent = torch.randn(
-                (batch_size, 1, 512), dtype=torch.float, requires_grad=True, device='cuda')
-        else:
-            latent = torch.randn(
-                (batch_size, 14, 512), dtype=torch.float, requires_grad=True, device='cuda')
+        for i in range(latent_num):
+            seeds = [random.randint(0, 100000) for _ in range(latent_num)]
 
-        var_list = [latent]
+            for i, seed in enumerate(seeds):
+                torch.manual_seed(seed)
+                torch.cuda.manual_seed(seed)
+                torch.backends.cudnn.deterministic = True
 
-        opt_dict = {
-            'sgd': torch.optim.SGD,
-            'adam': torch.optim.Adam,
-            'sgdm': partial(torch.optim.SGD, momentum=0.9),
-            'adamax': torch.optim.Adamax
-        }
-        opt_func = opt_dict[opt_name]
-        opt = SphericalOptimizer(opt_func, var_list, lr=learning_rate)
-
-        schedule_dict = {
-            'fixed': lambda x: 1,
-            'linear1cycle': lambda x: (9*(1-np.abs(x/steps-1/2)*2)+1)/10,
-            'linear1cycledrop': lambda x: (9*(1-np.abs(x/(0.9*steps)-1/2)*2)+1)/10 if x < 0.9*steps else 1/10 + (x-0.9*steps)/(0.1*steps)*(1/1000-1/10),
-        }
-        schedule_func = schedule_dict[lr_schedule]
-        scheduler = torch.optim.lr_scheduler.LambdaLR(opt.opt, schedule_func)
-
-        loss_builder = LossBuilder(ref_im, loss_str, eps).cuda()
-
-        min_loss = np.inf
-        min_l2 = np.inf
-        best_summary = ""
-        start_t = time.time()
-        gen_im = None
-
-        if self.verbose:
-            print("Optimizing")
-        for j in range(steps):
-            opt.opt.zero_grad()
-            # Duplicate latent in case tile_latent = True
-            if (tile_latent):
-                latent_in = latent.expand(-1, 14, -1)
+            if tile_latent:
+                latent = torch.randn((batch_size, 1, 512), dtype=torch.float, requires_grad=True, device='cuda')
             else:
-                latent_in = latent
+                latent = torch.randn((batch_size, 14, 512), dtype=torch.float, requires_grad=True, device='cuda')
 
-            # Apply learned linear mapping to match latent distribution to that of the mapping network
-            latent_in = self.lrelu(
-                latent_in*self.gaussian_fit["std"] + self.gaussian_fit["mean"])
-            # Normalize image to [0,1] instead of [-1,1]
-            gen_im = (self.G.synthesis(
-                latent_in, noise_mode='random', force_fp32=True) + 1) / 2
+            # Generate list of noise tensors
+            noise = [] # stores all of the noise tensors
 
-            # Calculate Losses
-            loss, loss_dict = loss_builder(latent_in, gen_im)
-            loss_dict['TOTAL'] = loss
+            for i in range(14):
+                # dimension of the ith noise tensor
+                res = (batch_size, 1, 2**(i//2+2), 2**(i//2+2))
+                new_noise = torch.zeros(res, dtype=torch.float, device='cuda')
+                new_noise.requires_grad = False
 
-            # Save best summary for log
-            if (loss < min_loss):
-                min_loss = loss
-                best_summary = f'BEST ({j+1}) | '+' | '.join(
-                    [f'{x}: {y:.4f}' for x, y in loss_dict.items()])
-                best_im = gen_im.clone()
+                noise.append(new_noise)
+            
+            var_list = [latent]+noise
 
-            loss_l2 = loss_dict['L2']
+            opt_dict = {
+                'sgd': torch.optim.SGD,
+                'adam': torch.optim.Adam,
+                'sgdm': partial(torch.optim.SGD, momentum=0.9),
+                'adamax': torch.optim.Adamax
+            }
+            opt_func = opt_dict[opt_name]
+            opt = SphericalOptimizer(opt_func, var_list, lr=learning_rate)
 
-            if (loss_l2 < min_l2):
-                min_l2 = loss_l2
+            schedule_dict = {
+                'fixed': lambda x: 1,
+                'linear1cycle': lambda x: (9*(1-np.abs(x/steps-1/2)*2)+1)/10,
+                'linear1cycledrop': lambda x: (9*(1-np.abs(x/(0.9*steps)-1/2)*2)+1)/10 if x < 0.9*steps else 1/10 + (x-0.9*steps)/(0.1*steps)*(1/1000-1/10),
+            }
+            schedule_func = schedule_dict[lr_schedule]
+            scheduler = torch.optim.lr_scheduler.LambdaLR(opt.opt, schedule_func)
 
-            # Save intermediate HR and LR images
-            if (save_intermediate):
-                yield (best_im.cpu().detach().clamp(0, 1), loss_builder.D(best_im).cpu().detach().clamp(0, 1))
+            loss_builder = LossBuilder(ref_im, loss_str, eps).cuda()
 
-            loss.backward()
-            opt.step()
-            scheduler.step()
+            min_loss = np.inf
+            min_l2 = np.inf
+            best_summary = ""
+            start_t = time.time()
+            gen_im = None
 
-        total_t = time.time()-start_t
-        current_info = f' | time: {total_t:.1f} | it/s: {(j+1)/total_t:.2f} | batchsize: {batch_size}'
-        if self.verbose:
-            print(best_summary+current_info)
+            if self.verbose:
+                print("Optimizing")
+            for j in range(steps):
+                opt.opt.zero_grad()
+                # Duplicate latent in case tile_latent = True
+                if (tile_latent):
+                    latent_in = latent.expand(-1, 14, -1)
+                else:
+                    latent_in = latent
 
-        yield (gen_im.clone().cpu().detach().clamp(0, 1), loss_builder.D(best_im).cpu().detach().clamp(0, 1))
+                # Apply learned linear mapping to match latent distribution to that of the mapping network
+                latent_in = self.lrelu(
+                    latent_in*self.gaussian_fit["std"] + self.gaussian_fit["mean"])
+                # Normalize image to [0,1] instead of [-1,1]
+                gen_im = (self.G.synthesis(
+                    latent_in, noise_mode='random', force_fp32=True) + 1) / 2
+
+                # Calculate Losses
+                loss, loss_dict = loss_builder(latent_in, gen_im)
+                loss_dict['TOTAL'] = loss
+
+                # Save best summary for log
+                if (loss < min_loss):
+                    min_loss = loss
+                    best_summary = f'BEST ({j+1}) | '+' | '.join(
+                        [f'{x}: {y:.4f}' for x, y in loss_dict.items()])
+                    best_im = gen_im.clone()
+
+                loss_l2 = loss_dict['L2']
+
+                if (loss_l2 < min_l2):
+                    min_l2 = loss_l2
+
+                # Save intermediate HR and LR images
+                if (save_intermediate):
+                    yield (best_im.cpu().detach().clamp(0, 1), loss_builder.D(best_im).cpu().detach().clamp(0, 1))
+
+                loss.backward()
+                opt.step()
+                scheduler.step()
+
+            total_t = time.time()-start_t
+            current_info = f' | time: {total_t:.1f} | it/s: {(j+1)/total_t:.2f} | batchsize: {batch_size}'
+            if self.verbose:
+                print(best_summary+current_info)
+            images.append((gen_im.clone().cpu().detach().clamp(0, 1)))
+        
+        yield images
