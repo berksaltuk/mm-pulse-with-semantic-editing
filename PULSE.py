@@ -74,33 +74,7 @@ class PULSE(torch.nn.Module):
             latent = torch.randn(
                 (batch_size, 14, 512), dtype=torch.float, requires_grad=True, device='cuda')
 
-        # Generate list of noise tensors
-        noise = []  # stores all of the noise tensors
-        noise_vars = []  # stores the noise tensors that we want to optimize on
-
-        for i in range(14):
-            # dimension of the ith noise tensor
-            res = (batch_size, 1, 2**(i//2+2), 2**(i//2+2))
-
-            if (noise_type == 'zero' or i in [int(layer) for layer in bad_noise_layers.split('.')]):
-                new_noise = torch.zeros(res, dtype=torch.float, device='cuda')
-                new_noise.requires_grad = False
-            elif (noise_type == 'fixed'):
-                new_noise = torch.randn(res, dtype=torch.float, device='cuda')
-                new_noise.requires_grad = False
-            elif (noise_type == 'trainable'):
-                new_noise = torch.randn(res, dtype=torch.float, device='cuda')
-                if (i < num_trainable_noise_layers):
-                    new_noise.requires_grad = True
-                    noise_vars.append(new_noise)
-                else:
-                    new_noise.requires_grad = False
-            else:
-                raise Exception("unknown noise type")
-
-            noise.append(new_noise)
-
-        var_list = [latent]+noise_vars
+        var_list = [latent]
 
         opt_dict = {
             'sgd': torch.optim.SGD,
@@ -142,7 +116,7 @@ class PULSE(torch.nn.Module):
                 latent_in*self.gaussian_fit["std"] + self.gaussian_fit["mean"])
             # Normalize image to [0,1] instead of [-1,1]
             gen_im = (self.G.synthesis(
-                latent_in, noise_mode='const', force_fp32=True) + 1) / 2
+                latent_in, noise_mode='random', force_fp32=True) + 1) / 2
 
             # Calculate Losses
             loss, loss_dict = loss_builder(latent_in, gen_im)
