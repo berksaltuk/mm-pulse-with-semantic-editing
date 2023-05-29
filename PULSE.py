@@ -1,4 +1,3 @@
-from stylegan import G_synthesis, G_mapping
 from dataclasses import dataclass
 from SphericalOptimizer import SphericalOptimizer
 from pathlib import Path
@@ -19,19 +18,18 @@ class PULSE(torch.nn.Module):
 
         self.G = None
         with open('stylegan2-ffhq-1024x1024.pkl', 'rb') as f:
-            self.G = pickle.load(f)['G_ema'].cuda()  # torch.nn.Module
-
+            self.G = pickle.load(f)['G_ema'].cuda()
+        z = torch.randn([1, self.G.z_dim]).cuda()
+        c = None
         self.verbose = verbose
 
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
-
         self.lrelu = torch.nn.LeakyReLU(negative_slope=0.2)
-
         if self.verbose:
             print("\tLoading Mapping Network")
-        self.mapping = self.G.mapping(z, c,
-                                      truncation_psi=0.5, truncation_cutoff=8).cuda()
+        self.mapping = self.G.mapping(
+            z, c, truncation_psi=0.5, truncation_cutoff=8).cuda()
 
     def forward(self, ref_im,
                 seed,
@@ -118,15 +116,14 @@ class PULSE(torch.nn.Module):
 
         if self.verbose:
             print("Optimizing")
-
-        mapping_mean = torch.mean(self.mapping)
-        mapping_std = torch.std(self.mapping)
-        print("Mean of G.mapping:",
-              mapping_mean.item())
-        print("Std deviation of G.mapping:",
-              mapping_std.item())
         for j in range(steps):
             opt.opt.zero_grad()
+
+            # Calculate mean and std deviation of
+            mapping_mean = torch.mean(self.mapping)
+            mapping_std = torch.std(self.mapping)
+            print("Mean of G.mapping:", mapping_mean.item())
+            print("Std deviation of G.mapping:", mapping_std.item())
 
             # Duplicate latent in case tile_latent = True
             if (tile_latent):
@@ -136,11 +133,10 @@ class PULSE(torch.nn.Module):
 
             # Apply learned linear mapping to match latent distribution to that of the mapping network
             latent_in = self.lrelu(
-                latent_in*mapping_std + mapping_mean)
-
+                latent_in * mapping_std.item() + mapping_mean.item())
             # Normalize image to [0,1] instead of [-1,1]
             gen_im = (self.G.synthesis(
-                latent_in, noise_mode='random', force_fp32=True)+1)/2
+                latent_in, noise_mode='const', force_fp32=True) + 1) / 2
 
             # Calculate Losses
             loss, loss_dict = loss_builder(latent_in, gen_im)
