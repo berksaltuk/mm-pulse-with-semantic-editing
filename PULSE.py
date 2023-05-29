@@ -17,8 +17,9 @@ class PULSE(torch.nn.Module):
         super(PULSE, self).__init__()
 
         self.G = None
-        with open('stylegan2-ffhq-1024x1024.pkl', 'rb') as f:
+        with open('stylegan2-celebahq-256x256.pkl', 'rb') as f:
             self.G = pickle.load(f)['G_ema'].cuda()
+        print("gzdim", self.G.z_dim)
         z = torch.randn([1, self.G.z_dim]).cuda()
         c = None
         self.verbose = verbose
@@ -59,13 +60,13 @@ class PULSE(torch.nn.Module):
                 (batch_size, 1, 512), dtype=torch.float, requires_grad=True, device='cuda')
         else:
             latent = torch.randn(
-                (batch_size, 18, 512), dtype=torch.float, requires_grad=True, device='cuda')
+                (batch_size, 14, 512), dtype=torch.float, requires_grad=True, device='cuda')
 
         # Generate list of noise tensors
         noise = []  # stores all of the noise tensors
         noise_vars = []  # stores the noise tensors that we want to optimize on
 
-        for i in range(18):
+        for i in range(14):
             # dimension of the ith noise tensor
             res = (batch_size, 1, 2**(i//2+2), 2**(i//2+2))
 
@@ -127,7 +128,7 @@ class PULSE(torch.nn.Module):
 
             # Duplicate latent in case tile_latent = True
             if (tile_latent):
-                latent_in = latent.expand(-1, 18, -1)
+                latent_in = latent.expand(-1, 14, -1)
             else:
                 latent_in = latent
 
@@ -139,6 +140,8 @@ class PULSE(torch.nn.Module):
                 latent_in, noise_mode='const', force_fp32=True) + 1) / 2
 
             # Calculate Losses
+            print("latent in", latent_in.shape)
+            print("gen_im", gen_im.shape)
             loss, loss_dict = loss_builder(latent_in, gen_im)
             loss_dict['TOTAL'] = loss
 
