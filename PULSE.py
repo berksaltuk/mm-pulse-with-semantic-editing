@@ -4,23 +4,27 @@ from pathlib import Path
 import numpy as np
 import time
 import torch
+
 from loss import LossBuilder
 from functools import partial
 from drive import open_url
 import dnnlib
 import torch_utils
 import pickle
+import gc
 
 
 class PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
+
         super(PULSE, self).__init__()
 
+        gc.collect()
+
+        torch.cuda.empty_cache()
         self.G = None
         with open('stylegan2-celebahq-256x256.pkl', 'rb') as f:
             self.G = pickle.load(f)['G_ema'].cuda()
-        print("gzdim", self.G.z_dim)
-        z = torch.randn([1, self.G.z_dim]).cuda()
         c = None
         self.verbose = verbose
 
@@ -29,8 +33,16 @@ class PULSE(torch.nn.Module):
         self.lrelu = torch.nn.LeakyReLU(negative_slope=0.2)
         if self.verbose:
             print("\tLoading Mapping Network")
-        self.mapping = self.G.mapping(
-            z, c, truncation_psi=0.5, truncation_cutoff=8).cuda()
+
+        # Calculate mean and std deviation of
+        with torch.no_grad():
+            torch.manual_seed(0)
+            latent = torch.randn(
+                (100000, 512), dtype=torch.float32, device="cuda")
+            latent_out = torch.nn.LeakyReLU(5)(self.G.mapping(
+                latent, c).cuda())
+            self.gaussian_fit = {"mean": latent_out.mean(
+                0), "std": latent_out.std(0)}
 
     def forward(self, ref_im,
                 seed,
@@ -119,13 +131,6 @@ class PULSE(torch.nn.Module):
             print("Optimizing")
         for j in range(steps):
             opt.opt.zero_grad()
-
-            # Calculate mean and std deviation of
-            mapping_mean = torch.mean(self.mapping)
-            mapping_std = torch.std(self.mapping)
-            print("Mean of G.mapping:", mapping_mean.item())
-            print("Std deviation of G.mapping:", mapping_std.item())
-
             # Duplicate latent in case tile_latent = True
             if (tile_latent):
                 latent_in = latent.expand(-1, 14, -1)
@@ -134,14 +139,12 @@ class PULSE(torch.nn.Module):
 
             # Apply learned linear mapping to match latent distribution to that of the mapping network
             latent_in = self.lrelu(
-                latent_in * mapping_std.item() + mapping_mean.item())
+                latent_in*self.gaussian_fit["std"] + self.gaussian_fit["mean"])
             # Normalize image to [0,1] instead of [-1,1]
             gen_im = (self.G.synthesis(
                 latent_in, noise_mode='const', force_fp32=True) + 1) / 2
 
             # Calculate Losses
-            print("latent in", latent_in.shape)
-            print("gen_im", gen_im.shape)
             loss, loss_dict = loss_builder(latent_in, gen_im)
             loss_dict['TOTAL'] = loss
 
