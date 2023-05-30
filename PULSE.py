@@ -62,6 +62,7 @@ class PULSE(torch.nn.Module):
 
         batch_size = ref_im.shape[0]
         images = []
+        latents = []
 
         for i in range(latent_num):
             seeds = [random.randint(0, 100000) for _ in range(latent_num)]
@@ -141,6 +142,7 @@ class PULSE(torch.nn.Module):
                     best_summary = f'BEST ({j+1}) | '+' | '.join(
                         [f'{x}: {y:.4f}' for x, y in loss_dict.items()])
                     best_im = gen_im.clone()
+                    latents.append(latent_in)
 
                 loss_l2 = loss_dict['L2']
 
@@ -161,4 +163,4 @@ class PULSE(torch.nn.Module):
                 print(best_summary+current_info)
             images.append((gen_im.clone().cpu().detach().clamp(0, 1)))
         
-        yield images
+        yield (images, latents)

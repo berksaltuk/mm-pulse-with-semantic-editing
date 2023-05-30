@@ -6,6 +6,7 @@ from PIL import Image
 import torchvision
 from math import log10, ceil
 import argparse
+from semantic_interpolation import semantic_interpolation
 
 
 class Images(Dataset):
@@ -81,6 +82,8 @@ model = DataParallel(model)
 
 toPIL = torchvision.transforms.ToPILImage()
 
+all_latents = []
+
 for ref_im, ref_im_name in dataloader:
     if (kwargs["save_intermediate"]):
         padding = ceil(log10(100))
@@ -96,9 +99,13 @@ for ref_im, ref_im_name in dataloader:
                 toPIL(LR[i].cpu().detach().clamp(0, 1)).save(
                     int_path_LR / f"{ref_im_name[i]}_{j:0{padding}}.png")
     else:
-      for j, images in enumerate(model(ref_im, **kwargs)):
+      for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
           print(f"Number of images: {len(images)}")
+          all_latents.append(latents)
           for i, image in enumerate(images):
               image_name = f"{ref_im_name[0]}_{j}_{i}"
               toPIL(image[0].cpu().detach().clamp(0, 1)).save(
                   out_path / f"{image_name}.png")
+
+interpolations = semantic_interpolation(all_latents, "/content/pulse/stylegan_celebahq_smile_w_boundary.npy" )
+print(interpolations)
