@@ -114,4 +114,4 @@ for ref_im, ref_im_name in dataloader:
 edit_path = Path("edit_output")
 edit_path.mkdir(parents=True, exist_ok=True)
 
-semantic_interpolation(all_latents, boundary, "edit_output")
+semantic_interpolation(all_latents, boundary, edit_path)
