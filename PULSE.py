@@ -166,6 +166,6 @@ class PULSE(torch.nn.Module):
             if self.verbose:
                 print(best_summary+current_info)
             images.append((gen_im.clone().cpu().detach().clamp(0, 1)))
-            latents.append(best_latent)
+            latents.append(latent_in)
 
         yield (images, latents)
