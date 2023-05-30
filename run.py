@@ -107,7 +107,8 @@ for ref_im, ref_im_name in dataloader:
     else:
         for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
             print(f"Number of images: {len(images)}")
-            semantic_interpolation(latents, boundary, edit_path, ref_im_name)
+            semantic_interpolation(
+                latents, boundary, edit_path, ref_im_name[0])
             for i, image in enumerate(images):
                 image_name = f"{ref_im_name[0]}_{j}_{i}"
                 toPIL(image[0].cpu().detach().clamp(0, 1)).save(
