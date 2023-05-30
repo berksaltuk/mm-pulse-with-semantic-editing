@@ -7,8 +7,10 @@ import torchvision
 from math import log10, ceil
 import argparse
 from semantic_interpolation import semantic_interpolation
-
 import numpy as np
+import pickle
+import os
+import torch
 
 
 class Images(Dataset):
@@ -110,5 +112,4 @@ for ref_im, ref_im_name in dataloader:
                     out_path / f"{image_name}.png")
 boundary = np.load(
     "/content/pulse/boundaries/stylegan_celebahq_smile_w_boundary.npy")
-interpolations = semantic_interpolation(all_latents, boundary)
-print(interpolations)
+semantic_interpolation(all_latents, boundary, out_path)
