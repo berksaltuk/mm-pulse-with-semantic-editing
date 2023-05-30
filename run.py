@@ -88,7 +88,8 @@ model = DataParallel(model)
 toPIL = torchvision.transforms.ToPILImage()
 
 all_latents = []
-
+edit_path = Path("edit_output")
+edit_path.mkdir(parents=True, exist_ok=True)
 for ref_im, ref_im_name in dataloader:
     if (kwargs["save_intermediate"]):
         padding = ceil(log10(100))
@@ -106,12 +107,8 @@ for ref_im, ref_im_name in dataloader:
     else:
         for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
             print(f"Number of images: {len(images)}")
-            all_latents.append(latents)
+            semantic_interpolation(latents, boundary, edit_path, ref_im_name)
             for i, image in enumerate(images):
                 image_name = f"{ref_im_name[0]}_{j}_{i}"
                 toPIL(image[0].cpu().detach().clamp(0, 1)).save(
                     out_path / f"{image_name}.png")
-edit_path = Path("edit_output")
-edit_path.mkdir(parents=True, exist_ok=True)
-
-semantic_interpolation(all_latents, boundary, edit_path)
