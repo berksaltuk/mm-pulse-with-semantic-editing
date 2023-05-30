@@ -112,4 +112,4 @@ for ref_im, ref_im_name in dataloader:
                     out_path / f"{image_name}.png")
 boundary = np.load(
     "/content/pulse/boundaries/stylegan_celebahq_smile_w_boundary.npy")
-semantic_interpolation(all_latents, boundary, out_path)
+semantic_interpolation(all_latents, boundary, "edit_output")

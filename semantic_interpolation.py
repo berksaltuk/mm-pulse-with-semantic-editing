@@ -25,5 +25,5 @@ def semantic_interpolation(all_latents, boundary, out_path):
                 torch.from_numpy(interpolations).to(device), noise_mode='const', force_fp32=True) + 1) / 2
             image_name = i
             toPIL(gen_im[0].cpu().detach().clamp(0, 1)).save(
-                out_path / f"edit/{image_name}.png")
+                out_path / f"{image_name}.png")
         i += 1
