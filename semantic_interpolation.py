@@ -13,7 +13,7 @@ def semantic_interpolation(latent_codes, boundary):
             total_interpolations = []
 
             for sample_id in tqdm(range(total_num), leave=False):
-                interpolations = linear_interpolate(latent_codes[sample_id:sample_id + 1],
+                interpolations = linear_interpolate(latent[sample_id:sample_id + 1],
                                                     boundary,
                                                     -3.0,
                                                     3.0,
