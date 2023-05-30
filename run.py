@@ -8,6 +8,8 @@ from math import log10, ceil
 import argparse
 from semantic_interpolation import semantic_interpolation
 
+import numpy as np
+
 
 class Images(Dataset):
     def __init__(self, root_dir, duplicates):
@@ -99,13 +101,14 @@ for ref_im, ref_im_name in dataloader:
                 toPIL(LR[i].cpu().detach().clamp(0, 1)).save(
                     int_path_LR / f"{ref_im_name[i]}_{j:0{padding}}.png")
     else:
-      for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
-          print(f"Number of images: {len(images)}")
-          all_latents.append(latents)
-          for i, image in enumerate(images):
-              image_name = f"{ref_im_name[0]}_{j}_{i}"
-              toPIL(image[0].cpu().detach().clamp(0, 1)).save(
-                  out_path / f"{image_name}.png")
-
-interpolations = semantic_interpolation(all_latents, "/content/pulse/stylegan_celebahq_smile_w_boundary.npy" )
+        for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
+            print(f"Number of images: {len(images)}")
+            all_latents.append(latents)
+            for i, image in enumerate(images):
+                image_name = f"{ref_im_name[0]}_{j}_{i}"
+                toPIL(image[0].cpu().detach().clamp(0, 1)).save(
+                    out_path / f"{image_name}.png")
+boundary = np.load(
+    "/content/pulse/boundaries/stylegan_celebahq_smile_w_boundary.npy")
+interpolations = semantic_interpolation(all_latents, boundary)
 print(interpolations)
