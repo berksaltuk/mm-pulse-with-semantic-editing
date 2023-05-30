@@ -14,6 +14,7 @@ import pickle
 import gc
 import random
 
+
 class PULSE(torch.nn.Module):
     def __init__(self, cache_dir, verbose=True):
 
@@ -73,12 +74,14 @@ class PULSE(torch.nn.Module):
                 torch.backends.cudnn.deterministic = True
 
             if tile_latent:
-                latent = torch.randn((batch_size, 1, 512), dtype=torch.float, requires_grad=True, device='cuda')
+                latent = torch.randn(
+                    (batch_size, 1, 512), dtype=torch.float, requires_grad=True, device='cuda')
             else:
-                latent = torch.randn((batch_size, 14, 512), dtype=torch.float, requires_grad=True, device='cuda')
+                latent = torch.randn(
+                    (batch_size, 14, 512), dtype=torch.float, requires_grad=True, device='cuda')
 
             # Generate list of noise tensors
-            noise = [] # stores all of the noise tensors
+            noise = []  # stores all of the noise tensors
 
             for i in range(14):
                 # dimension of the ith noise tensor
@@ -87,7 +90,7 @@ class PULSE(torch.nn.Module):
                 new_noise.requires_grad = False
 
                 noise.append(new_noise)
-            
+
             var_list = [latent]+noise
 
             opt_dict = {
@@ -105,7 +108,8 @@ class PULSE(torch.nn.Module):
                 'linear1cycledrop': lambda x: (9*(1-np.abs(x/(0.9*steps)-1/2)*2)+1)/10 if x < 0.9*steps else 1/10 + (x-0.9*steps)/(0.1*steps)*(1/1000-1/10),
             }
             schedule_func = schedule_dict[lr_schedule]
-            scheduler = torch.optim.lr_scheduler.LambdaLR(opt.opt, schedule_func)
+            scheduler = torch.optim.lr_scheduler.LambdaLR(
+                opt.opt, schedule_func)
 
             loss_builder = LossBuilder(ref_im, loss_str, eps).cuda()
 
@@ -135,14 +139,14 @@ class PULSE(torch.nn.Module):
                 # Calculate Losses
                 loss, loss_dict = loss_builder(latent_in, gen_im)
                 loss_dict['TOTAL'] = loss
-
+                best_latent = None
                 # Save best summary for log
                 if (loss < min_loss):
                     min_loss = loss
                     best_summary = f'BEST ({j+1}) | '+' | '.join(
                         [f'{x}: {y:.4f}' for x, y in loss_dict.items()])
                     best_im = gen_im.clone()
-                    latents.append(latent_in)
+                    best_latent = latent_in
 
                 loss_l2 = loss_dict['L2']
 
@@ -162,5 +166,6 @@ class PULSE(torch.nn.Module):
             if self.verbose:
                 print(best_summary+current_info)
             images.append((gen_im.clone().cpu().detach().clamp(0, 1)))
-        
+            latents.append(best_latent)
+
         yield (images, latents)
