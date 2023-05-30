@@ -74,7 +74,8 @@ parser.add_argument('-save_intermediate', action='store_true',
                     help='Whether to store and save intermediate HR and LR images during optimization')
 
 kwargs = vars(parser.parse_args())
-
+boundary = np.load(
+    "/content/pulse/boundaries/stylegan_celebahq_smile_w_boundary.npy")
 dataset = Images(kwargs["input_dir"], duplicates=kwargs["duplicates"])
 out_path = Path(kwargs["output_dir"])
 out_path.mkdir(parents=True, exist_ok=True)
@@ -110,6 +111,7 @@ for ref_im, ref_im_name in dataloader:
                 image_name = f"{ref_im_name[0]}_{j}_{i}"
                 toPIL(image[0].cpu().detach().clamp(0, 1)).save(
                     out_path / f"{image_name}.png")
-boundary = np.load(
-    "/content/pulse/boundaries/stylegan_celebahq_smile_w_boundary.npy")
+edit_path = Path("edit_output")
+edit_path.mkdir(parents=True, exist_ok=True)
+
 semantic_interpolation(all_latents, boundary, "edit_output")
