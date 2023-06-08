@@ -110,10 +110,10 @@ for ref_im, ref_im_name in dataloader:
         for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
             print(f"Number of images: {len(images)}")
             # to test smile boundary
-            semantic_interpolation(
-                latents, boundary, edit_path, ref_im_name[0])
-            np.save(latent_path / f"{ref_im_name[0]}.npy", np.array(
-                [latent.cpu().data.numpy() for latent in latents]))
+            # semantic_interpolation(
+            #    latents, boundary, edit_path, ref_im_name[0])
+            # np.save(latent_path / f"{ref_im_name[0]}.npy", np.array(
+            #    [latent.cpu().data.numpy() for latent in latents]))
             all_latents.append(
                 np.array([latent.cpu().data.numpy() for latent in latents]))
             for i, image in enumerate(images):
