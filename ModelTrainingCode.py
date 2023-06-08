@@ -17,7 +17,7 @@ attribute_label_df.head()
 print("############################# Start Loading Data ##############################")
 # Splitting the labelled data into train, validate and test.
 train, temp = train_test_split(
-    attribute_label_df, test_size=0.2, shuffle=False)
+    attribute_label_df, test_size=0.95, shuffle=False)
 validate, test = train_test_split(temp, test_size=0.5, shuffle=False)
 
 print(len(train.index))
@@ -80,7 +80,7 @@ image_label_ToCompare = torch.Tensor(np.array(pd.DataFrame(
     train.drop(train.columns[0], axis=1)).values).astype('float64')).float()
 
 
-for epoch in range(0, 150):
+for epoch in range(0, 2):
     total_Batches = int(total_training_Samples/default_bs) + 1
     for minibatch in range(0, total_Batches):
         torch.cuda.empty_cache()
