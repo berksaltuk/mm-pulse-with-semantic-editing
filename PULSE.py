@@ -100,6 +100,7 @@ class PULSE(torch.nn.Module):
         scores_bang = []
         scores_blonde = []
         scores_brown = []
+        scores_black = []
 
         for i in range(latent_num):
             seeds = [random.randint(0, 100000) for _ in range(latent_num)]
@@ -216,7 +217,8 @@ class PULSE(torch.nn.Module):
             scores_smile.append(scores[0][31])
             scores_bang.append(scores[0][5])
             scores_blonde.append(scores[0][9])
+            scores_black.append(scores[0][8])
             scores_brown.append(scores[0][11])
             latents.append(latent_in)
 
-        yield (images, latents, scores_smile, scores_bang, scores_blonde, scores_brown)
+        yield (images, latents, scores_smile, scores_bang, scores_blonde, scores_brown, scores_black)
