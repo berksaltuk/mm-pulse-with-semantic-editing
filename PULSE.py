@@ -4,7 +4,11 @@ from pathlib import Path
 import numpy as np
 import time
 import torch
-
+import torchvision.models as models
+from torchvision import transforms
+import torch.nn as nn
+import PIL
+from PIL import Image
 from loss import LossBuilder
 from functools import partial
 from drive import open_url
@@ -35,7 +39,35 @@ class PULSE(torch.nn.Module):
         if self.verbose:
             print("\tLoading Mapping Network")
 
-        # Calculate mean and std deviation of
+        print(torch.cuda.is_available())
+        if torch.cuda.is_available():
+            device = torch.device('cuda')
+            print("The device is" + str(device))
+        print(
+            "############################# Assigned Device ##############################")
+
+        torch.cuda.empty_cache()
+
+        # Describing the model architecture to initialise with data from checkpoint
+        self.resnext50_32x4d = models.resnext50_32x4d(pretrained=True)
+        self.resnext50_32x4d.fc = nn.Linear(2048, 40)
+        ct = 0
+        for child in self.resnext50_32x4d.children():
+            ct += 1
+            if ct < 6:
+                for param in child.parameters():
+                    param.requires_grad = False
+
+        self.resnext50_32x4d.to(device)
+        path_toLoad = "/content/gdrive/MyDrive/485/model_1_epoch.pt"
+        checkpoint = torch.load(path_toLoad)
+
+        # Initializing the model with the model parameters of the checkpoint.
+        self.resnext50_32x4d.load_state_dict(checkpoint['model_state_dict'])
+        # Setting the model to be in evaluation mode. This will set the batch normalization parameters.
+        self.resnext50_32x4d.eval()
+
+        # Mapping network
         with torch.no_grad():
             torch.manual_seed(0)
             latent = torch.randn(
@@ -64,6 +96,10 @@ class PULSE(torch.nn.Module):
         batch_size = ref_im.shape[0]
         images = []
         latents = []
+        scores_smile = []
+        scores_bang = []
+        scores_blonde = []
+        scores_brown = []
 
         for i in range(latent_num):
             seeds = [random.randint(0, 100000) for _ in range(latent_num)]
@@ -166,6 +202,20 @@ class PULSE(torch.nn.Module):
             if self.verbose:
                 print(best_summary+current_info)
             images.append((gen_im.clone().cpu().detach().clamp(0, 1)))
+
+            device = torch.device('cuda')
+            pil_img = Image.open("./realpics/29954.jpg").convert('RGB')
+            batch_imageTensor = torch.cuda.FloatTensor(1, 3, 256, 256)
+
+            batch_imageTensor[0] = transforms.ToTensor()(pil_img)
+
+            batch_imageTensor.to(device)
+            # Doing prediction on test data
+            scores = self.resnext50_32x4d(batch_imageTensor)
+            scores_smile.append(scores[31])
+            scores_bang.append(scores[5])
+            scores_blonde.append(scores[9])
+            scores_brown.append(scores[11])
             latents.append(latent_in)
 
-        yield (images, latents)
+        yield (images, latents, scores_smile, scores_bang, scores_blonde, scores_brown)

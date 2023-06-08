@@ -88,6 +88,11 @@ model = DataParallel(model)
 toPIL = torchvision.transforms.ToPILImage()
 
 all_latents = []
+all_smile = []
+all_bang = []
+all_blonde = []
+all_brown = []
+
 edit_path = Path("edit_output")
 edit_path.mkdir(parents=True, exist_ok=True)
 latent_path = Path("latent_vectors")
@@ -107,7 +112,7 @@ for ref_im, ref_im_name in dataloader:
                 toPIL(LR[i].cpu().detach().clamp(0, 1)).save(
                     int_path_LR / f"{ref_im_name[i]}_{j:0{padding}}.png")
     else:
-        for j, (images, latents) in enumerate(model(ref_im, **kwargs)):
+        for j, (images, latents, scores_smile, scores_bang, scores_blonde, scores_brown) in enumerate(model(ref_im, **kwargs)):
             print(f"Number of images: {len(images)}")
             # to test smile boundary
             # semantic_interpolation(
@@ -116,9 +121,21 @@ for ref_im, ref_im_name in dataloader:
             #    [latent.cpu().data.numpy() for latent in latents]))
             all_latents.append(
                 np.array([latent.cpu().data.numpy() for latent in latents]))
+            all_smile.append(
+                np.array([score.cpu().data.numpy() for score in scores_smile]))
+            all_bang.append(
+                np.array([score.cpu().data.numpy() for score in scores_bang]))
+            all_blonde.append(
+                np.array([score.cpu().data.numpy() for score in scores_blonde]))
+            all_brown.append(
+                np.array([score.cpu().data.numpy() for score in scores_brown]))
             for i, image in enumerate(images):
                 image_name = f"{ref_im_name[0]}_{j}_{i}"
                 toPIL(image[0].cpu().detach().clamp(0, 1)).save(
                     out_path / f"{image_name}.png")
 
 np.save(latent_path / "w.npy", np.array(all_latents))
+np.save(latent_path / "smile_scores.npy", np.array(all_smile))
+np.save(latent_path / "hair_bangs_scores.npy", np.array(all_bang))
+np.save(latent_path / "blond_hair_scores.npy", np.array(all_blonde))
+np.save(latent_path / "brown_hair_scores.npy", np.array(all_brown))
