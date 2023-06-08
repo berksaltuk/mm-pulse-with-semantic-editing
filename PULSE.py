@@ -212,10 +212,11 @@ class PULSE(torch.nn.Module):
             batch_imageTensor.to(device)
             # Doing prediction on test data
             scores = self.resnext50_32x4d(batch_imageTensor)
-            scores_smile.append(scores[31])
-            scores_bang.append(scores[5])
-            scores_blonde.append(scores[9])
-            scores_brown.append(scores[11])
+            scores = scores.to('cpu')
+            scores_smile.append(scores[0][31])
+            scores_bang.append(scores[0][5])
+            scores_blonde.append(scores[0][9])
+            scores_brown.append(scores[0][11])
             latents.append(latent_in)
 
         yield (images, latents, scores_smile, scores_bang, scores_blonde, scores_brown)
