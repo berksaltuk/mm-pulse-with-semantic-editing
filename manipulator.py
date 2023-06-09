@@ -141,10 +141,10 @@ def linear_interpolate(latent_code,
     if len(latent_code.shape) == 2:
         linspace = linspace - latent_code.dot(boundary.T)
         linspace = linspace.reshape(-1, 1).astype(np.float32)
-        return latent_code.cpu().data.numpy() + linspace * boundary
+        return latent_code + linspace * boundary
     if len(latent_code.shape) == 3:
         linspace = linspace.reshape(-1, 1, 1).astype(np.float32)
-        return latent_code.cpu().data.numpy() + linspace * boundary.reshape(1, 1, -1)
+        return latent_code + linspace * boundary.reshape(1, 1, -1)
     raise ValueError(f'Input `latent_code` should be with shape '
                      f'[1, latent_space_dim] or [1, N, latent_space_dim] for '
                      f'W+ space in Style GAN!\n'
