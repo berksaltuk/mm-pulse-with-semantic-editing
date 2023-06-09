@@ -36,19 +36,19 @@ def parse_args():
                         help='Sample whose attribute score is equal to this '
                              'field will be ignored. (default: None)')
 
+    parser.add_argument('-bn', '--boundary_name', type=float, default="smile", required=False,
+                        help='Boundary type/name must be given with this field. Default is smile')
     return parser.parse_args()
 
 
 def main():
     """Main function."""
     args = parse_args()
-    logger.info('Loading latent codes.')
     if not os.path.isfile(args.latent_codes_path):
         raise ValueError(
             f'Latent codes `{args.latent_codes_path}` does not exist!')
     latent_codes = np.load(args.latent_codes_path)
 
-    logger.info('Loading attribute scores.')
     if not os.path.isfile(args.scores_path):
         raise ValueError(
             f'Attribute scores `{args.scores_path}` does not exist!')
@@ -58,9 +58,9 @@ def main():
                               scores=scores,
                               chosen_num_or_ratio=args.chosen_num_or_ratio,
                               split_ratio=args.split_ratio,
-                              invalid_value=args.invalid_value,
-                              logger=logger)
-    np.save(os.path.join(args.output_dir, 'boundary.npy'), boundary)
+                              invalid_value=args.invalid_value)
+    np.save(os.path.join(args.output_dir,
+            f"boundary{args.boundary_name}.npy"), boundary)
 
 
 if __name__ == '__main__':
