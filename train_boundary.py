@@ -13,6 +13,9 @@ import argparse
 import numpy as np
 
 from manipulator import train_boundary
+from pathlib import Path
+out_path = Path("our_boundaries")
+out_path.mkdir(parents=True, exist_ok=True)
 
 
 def parse_args():
@@ -36,7 +39,7 @@ def parse_args():
                         help='Sample whose attribute score is equal to this '
                              'field will be ignored. (default: None)')
 
-    parser.add_argument('-bn', '--boundary_name', type=float, default="smile", required=False,
+    parser.add_argument('-bn', '--boundary_name', type=str, default="smile", required=False,
                         help='Boundary type/name must be given with this field. Default is smile')
     return parser.parse_args()
 
