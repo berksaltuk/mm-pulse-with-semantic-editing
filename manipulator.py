@@ -8,8 +8,7 @@ def train_boundary(latent_codes,
                    scores,
                    chosen_num_or_ratio=0.02,
                    split_ratio=0.7,
-                   invalid_value=None,
-                   logger=None):
+                   invalid_value=FileNotFoundError):
 
     if (not isinstance(latent_codes, np.ndarray) or
             not len(latent_codes.shape) == 2):
@@ -83,9 +82,6 @@ def train_boundary(latent_codes,
     if remaining_num:
         remaining_prediction = classifier.predict(remaining_data)
         correct_num = np.sum(remaining_label == remaining_prediction)
-        logger.info(f'Accuracy for remaining set: '
-                    f'{correct_num} / {remaining_num} = '
-                    f'{correct_num / remaining_num:.6f}')
 
     a = classifier.coef_.reshape(1, latent_space_dim).astype(np.float32)
     return a / np.linalg.norm(a)
