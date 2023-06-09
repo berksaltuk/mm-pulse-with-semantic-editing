@@ -205,10 +205,10 @@ class PULSE(torch.nn.Module):
             images.append((gen_im.clone().cpu().detach().clamp(0, 1)))
 
             device = torch.device('cuda')
-            pil_img = Image.open("./realpics/29954.jpg").convert('RGB')
             batch_imageTensor = torch.cuda.FloatTensor(1, 3, 256, 256)
-
-            batch_imageTensor[0] = transforms.ToTensor()(pil_img)
+            print(gen_im.shape)
+            batch_imageTensor[0] = transforms.ToTensor()(
+                transforms.ToPILImage()(gen_im[0]))
 
             batch_imageTensor.to(device)
             # Doing prediction on test data
