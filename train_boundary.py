@@ -12,8 +12,7 @@ import os.path
 import argparse
 import numpy as np
 
-from utils.logger import setup_logger
-from utils.manipulator import train_boundary
+from manipulator import train_boundary
 
 
 def parse_args():
@@ -43,8 +42,6 @@ def parse_args():
 def main():
     """Main function."""
     args = parse_args()
-    logger = setup_logger(args.output_dir, logger_name='generate_data')
-
     logger.info('Loading latent codes.')
     if not os.path.isfile(args.latent_codes_path):
         raise ValueError(
