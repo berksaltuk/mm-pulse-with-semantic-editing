@@ -15,9 +15,9 @@ G = None
 with open('stylegan2-celebahq-256x256.pkl', 'rb') as f:
     G = pickle.load(f)['G_ema'].cuda()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-latent_codes = np.load('/content/pulse/latent_vectors/w.npy')
-latent_codes = latent_codes.reshape((100, 14, 512))
-latent_codes = latent_codes[2]
+latents = np.load('/content/pulse/latent_vectors/w.npy')
+latents = latents.reshape((100, 14, 512))
+latent_codes = latents[1]
 
 out_path = Path("edit_smile")
 out_path.mkdir(parents=True, exist_ok=True)
@@ -42,6 +42,7 @@ for latent in latent_codes.reshape(1, 14, 512):
 out_path = Path("edit_bangs")
 out_path.mkdir(parents=True, exist_ok=True)
 boundary = np.load('/content/pulse/our_boundaries/boundary_bangs.npy')
+latent_codes = latents[3]
 i = 0
 for latent in latent_codes.reshape(1, 14, 512):
     interpolations = [linear_interpolate(latent.reshape((1, 14, 512)), boun.reshape(
@@ -62,6 +63,7 @@ for latent in latent_codes.reshape(1, 14, 512):
 out_path = Path("edit_blond")
 out_path.mkdir(parents=True, exist_ok=True)
 boundary = np.load('/content/pulse/our_boundaries/boundary_blondhair.npy')
+latent_codes = latents[5]
 i = 0
 for latent in latent_codes.reshape(1, 14, 512):
     interpolations = [linear_interpolate(latent.reshape((1, 14, 512)), boun.reshape(
@@ -82,6 +84,7 @@ for latent in latent_codes.reshape(1, 14, 512):
 out_path = Path("edit_black")
 out_path.mkdir(parents=True, exist_ok=True)
 boundary = np.load('/content/pulse/our_boundaries/boundary_blackhair.npy')
+latent_codes = latents[7]
 i = 0
 for latent in latent_codes.reshape(1, 14, 512):
     interpolations = [linear_interpolate(latent.reshape((1, 14, 512)), boun.reshape(
