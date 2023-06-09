@@ -63,7 +63,7 @@ def main():
                               split_ratio=args.split_ratio,
                               invalid_value=args.invalid_value)
     np.save(os.path.join(args.output_dir,
-            f"boundary{args.boundary_name}.npy"), boundary)
+            f"boundary_{args.boundary_name}.npy"), boundary)
 
 
 if __name__ == '__main__':
